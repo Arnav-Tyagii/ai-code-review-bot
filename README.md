@@ -49,14 +49,15 @@ flowchart LR
 - `google-generativeai` (Gemini `gemini-3.5-flash` for file review and summarization)
 - `python-dotenv` (local configuration)
 - Docker (containerized deploy)
-- GitHub Actions (pytest on PRs, deploy to Railway on `main`)
+- GitHub Actions (pytest on pull requests)
+- Render (hosted deployment)
 
 ## Prerequisites
 
 - Python 3.12.10 or compatible 3.12.x
 - API keys: [Google AI Studio](https://aistudio.google.com/) (Gemini), GitHub personal access token with `repo` scope (or fine-grained PR/repo permissions)
 - A publicly reachable HTTPS URL for the webhook (local dev: use [ngrok](https://ngrok.com/) or similar)
-- Optional: Railway account and `RAILWAY_TOKEN` for automated deploy
+- Render account (or any host with a public HTTPS URL)
 
 ## Setup
 
@@ -130,16 +131,29 @@ Behaviour is controlled by constants in the source modules:
 
 Issue `severity` values: `critical`, `warning`, `suggestion`. Categories include `bug`, `security`, `oop_violation`, `style`, `performance`, `best_practice`.
 
-## Deploy
+## Deploy (Render)
 
-Pushes to `main` run `.github/workflows/deploy.yml`, which deploys to Railway via `railway up`. Set these GitHub repository secrets:
+1. Create a **Web Service** on [Render](https://render.com/) and connect this GitHub repo.
+2. Use **Python** (recommended) or Docker. For Python, set:
+   - **Build command:** `pip install -r requirements.txt`
+   - **Start command:** `uvicorn webhook.server:app --host 0.0.0.0 --port $PORT`
+   - **Health check path:** `/health`
+3. Add environment variables in the Render dashboard (same as `.env`):
 
-| Secret | Required | Description |
-|--------|----------|-------------|
-| `RAILWAY_TOKEN` | Yes | Railway CLI deploy token |
-| `SLACK_WEBHOOK_URL` | No | Optional deploy success/failure notification |
+| Variable | Required |
+|----------|----------|
+| `GEMINI_API_KEY` | Yes |
+| `GITHUB_TOKEN` | Yes |
+| `GITHUB_WEBHOOK_SECRET` | Yes |
 
-Configure the same environment variables on Railway as in `.env`. Use the Railway public URL as the GitHub webhook payload URL.
+4. After deploy, open `https://<your-service>.onrender.com/health` and confirm both keys show as connected.
+5. In GitHub repo **Settings → Webhooks**, set **Payload URL** to:
+
+   `https://<your-service>.onrender.com/webhook`
+
+Render redeploys automatically when you push to the connected branch. You can also use the included `render.yaml` as a Blueprint.
+
+**Note:** The old Railway GitHub Action was removed so pushes to `main` no longer show a failed deploy check. CI tests still run on pull requests only.
 
 ## API endpoints
 
@@ -164,8 +178,8 @@ ai-code-review-bot/
 ├── tests/
 │   └── test_reviewer.py       # Pytest suite
 ├── .github/workflows/
-│   ├── test.yml               # PR tests
-│   └── deploy.yml             # Railway deploy
+│   └── test.yml               # PR tests
+├── render.yaml                # Render Blueprint (optional)
 ├── Dockerfile
 ├── requirements.txt
 ├── .env.example
