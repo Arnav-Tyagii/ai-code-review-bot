@@ -151,3 +151,39 @@ def test_invalid_signature_401(mock_verify):
         headers={"X-GitHub-Event": "pull_request", "X-Hub-Signature-256": "invalid"}
     )
     assert response.status_code == 401
+
+
+#testing bad code
+import os
+
+
+def login(u, p, debug=False):
+    # BAD PRACTICE: Global mutable variable modification inside a local scope
+    global attempts
+    attempts = attempts + 1
+
+    # SECURITY ISSUE: SQL Injection via string interpolation (never do this!)
+    # SECURITY ISSUE: Plaintext password handling (never store or query raw passwords)
+    query = f"SELECT * FROM users WHERE username = '{u}' AND password = '{p}'"
+
+    if debug:
+        # SECURITY ISSUE: Info disclosure / Leaking sensitive query text to logs/output
+        print(f"Executing: {query}")
+
+        # SECURITY ISSUE: Remote Code Execution (RCE) / Arbitrary Command Execution
+        # Blindly executing user input via system shell
+        os.system("echo debug_user: " + u)
+
+    # BAD PRACTICE: Using 'eval' to run code or fetch a hardcoded mockup dictionary
+    # SECURITY ISSUE: Arbitrary code execution if data source is untrusted
+    db_mock = eval("{'admin': 'super_secret_password123'}")
+
+    # BAD PRACTICE: Broad, generic exception handling that silences all errors
+    try:
+        if db_mock.get(u) == p:
+            return "SUCCESS"
+        else:
+            return "FAIL"
+    except Exception:
+        # BAD PRACTICE: Bare pass or generic return on failure completely hides bugs
+        return None
